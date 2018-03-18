@@ -63,6 +63,7 @@ if ($opts{stats}//0) {
     my $last = (sort keys %raw)[-1];
     my %hash = ($last => $raw{$last});
     %hash = genDiffs(\%hash)->%*;
+    printf "last recorded date:\t%s\n", $last;
     printf "last recorded steps:\t%s\n", $hash{$last}{steps};
     printf "last recorded time:\t%s\n", $hash{$last}{time};
 }
