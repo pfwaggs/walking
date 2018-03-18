@@ -24,15 +24,13 @@ use Date::Tiny;
 
 #ZaZ
 
-my %opts = (history => 'mallData.yaml');
-my @opts = qw/history=s date=s stats verbose/;
+my %opts = (file => 'mallData.yaml');
+my @opts = qw/file=s date=s stats verbose/;
 GetOptions( \%opts, @opts ) or die 'something goes here';
 
-#my $dateObj = Date::Tiny->new;
-
 my %raw;
-if (defined $opts{history} and -f $opts{history}) {
-    %raw = LoadFile($opts{history})->%*;
+if (defined $opts{file} and -f $opts{file}) {
+    %raw = LoadFile($opts{file})->%*;
 } else {
     warn 'no historical data to load', "\n";
 }
@@ -44,10 +42,36 @@ if (-p STDIN) {
 	$raw{$_} = $stdinData{$_};
     }
 }
-#p %raw; die;
+
 my %diffs = genDiffs(\%raw)->%*;
 
-sub readPipe {
+#my @subKeys = (sort keys $stdinData{diffs}->%*)[0..5];
+#my %subset = $stdinData{diffs}->%{@subKeys};
+#p %subset;
+
+if ($opts{stats}//0) {
+    for my $row (genStats(\%diffs)) {
+	say $row->{preview};
+	if ($opts{verbose}//0) {
+	    say join("\t", $_, $diffs{$_}->@{qw/steps time/}) for $row->{keys}->@*;
+	}
+	printf "average steps\t%s\n", $row->{stats}{steps};
+	printf "average time\t%s\n", $row->{stats}{minutes};
+	say '';
+    }
+} else {
+    my $last = (sort keys %raw)[-1];
+    my %hash = ($last => $raw{$last});
+    %hash = genDiffs(\%hash)->%*;
+    printf "last recorded steps:\t%s\n", $hash{$last}{steps};
+    printf "last recorded time:\t%s\n", $hash{$last}{time};
+}
+
+if ($startCount < keys %raw) {
+    DumpFile($opts{file}, \%raw);
+}
+
+sub readPipe { #AzA
     my $date;
     my %rtn;
     while (<>) {
@@ -76,28 +100,7 @@ sub readPipe {
 	}
     }
     return \%rtn;
-}
-
-
-#my @subKeys = (sort keys $stdinData{diffs}->%*)[0..5];
-#my %subset = $stdinData{diffs}->%{@subKeys};
-#p %subset;
-
-if ($opts{stats}//0) {
-    for my $row (genStats(\%diffs)) {
-	say $row->{preview};
-	if ($opts{verbose}//0) {
-	    say join("\t", $_, $diffs{$_}->@{qw/steps time/}) for $row->{keys}->@*;
-	}
-	printf "average steps\t%s\n", $row->{stats}{steps};
-	printf "average time\t%s\n", $row->{stats}{minutes};
-	say '';
-    }
-}
-
-if ($startCount < keys %raw) {
-    DumpFile($opts{history}, \%raw);
-}
+} #ZaZ
 
 sub stats ($data) { #AzA
     my @points = keys $data->%*;
